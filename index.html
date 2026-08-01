@@ -210,6 +210,16 @@
         </main>
     </div>
 
+    <!-- Script para detectar errores de carga de módulos en navegadores o bloqueadores -->
+    <script>
+        window.addEventListener('error', function(e) {
+            console.error("Error global capturado:", e.message);
+            if (e.message && (e.message.includes('module') || e.message.includes('import'))) {
+                alert("Error cargando la aplicación. Es posible que tu navegador esté bloqueando los scripts o necesites limpiar la caché.");
+            }
+        });
+    </script>
+
     <!-- Import Maps para ES Modules desde CDN -->
     <script type="importmap">
     {
@@ -225,7 +235,7 @@
     <!-- Lógica de la Aplicación -->
     <script type="module">
         import { initializeApp } from "firebase/app";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithRedirect, getRedirectResult } from "firebase/auth";
         import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy } from "firebase/firestore";
         import { GoogleGenAI } from "@google/genai";
 
@@ -255,6 +265,17 @@
             auth = getAuth(app);
             db = getFirestore(app);
             provider = new GoogleAuthProvider();
+
+            // Revisar si venimos de una redirección de inicio de sesión
+            getRedirectResult(auth).then((result) => {
+                if (result && result.user) {
+                    console.log("Sesión iniciada vía redirección:", result.user.email);
+                }
+            }).catch((error) => {
+                console.error("Error post-redirección:", error);
+                alert("Error al iniciar sesión tras redirección: " + error.message);
+            });
+
         } catch (error) {
             console.error("Error crítico inicializando Firebase:", error);
             document.body.innerHTML = `<div style="padding:40px; text-align:center; font-family:sans-serif;">
@@ -336,18 +357,34 @@
         });
 
         btnLogin.addEventListener('click', async () => {
-            if (!auth) return alert("Firebase no está inicializado.");
+            if (!auth) return alert("Firebase no está inicializado. Revisa la consola para ver errores.");
             try {
                 btnLogin.disabled = true;
-                btnLogin.innerHTML = 'Iniciando sesión...';
+                btnLogin.innerHTML = 'Conectando con Google...';
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Error Auth:", error);
                 
-                if (error.code === 'auth/unauthorized-domain') {
-                    alert(`DOMINIO NO AUTORIZADO\n\nDebes agregar el dominio actual ("${window.location.hostname}") a la lista de Dominios Autorizados.\n\nVe a tu consola de Firebase:\n1. Authentication\n2. Settings (Configuración)\n3. Authorized domains (Dominios Autorizados)\n4. Agrega: ${window.location.hostname}`);
+                if (error.code === 'auth/popup-blocked') {
+                    alert("El navegador bloqueó la ventana emergente. Intentando redirección automática...");
+                    signInWithRedirect(auth, provider);
+                    return;
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    alert(`DOMINIO NO AUTORIZADO\n\nDebes agregar "${window.location.hostname}" a los Dominios Autorizados.\n\nEn la consola de Firebase:\n1. Authentication -> Configuración (Settings)\n2. Dominios Autorizados (Authorized domains)\n3. Agrega: ${window.location.hostname}`);
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    alert("PROVEEDOR NO HABILITADO\n\nDebes habilitar Google en Firebase:\n1. Consola de Firebase -> Authentication\n2. Pestaña 'Sign-in method'\n3. Habilita Google y guarda.");
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    console.log("El usuario cerró el popup de autenticación.");
                 } else {
-                    alert("Error al iniciar sesión: " + error.message);
+                    // Si el error es de red o popup no funciona, intentar redirección como último recurso si están en móvil.
+                    if (window.innerWidth <= 768) {
+                        if (confirm("Hubo un error con la ventana emergente. ¿Deseas intentar iniciar sesión recargando la página (Redirección)?")) {
+                            signInWithRedirect(auth, provider);
+                            return;
+                        }
+                    } else {
+                        alert("Error al iniciar sesión: " + error.message + " (" + error.code + ")");
+                    }
                 }
                 
                 btnLogin.disabled = false;
