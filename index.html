@@ -226,8 +226,7 @@
         "imports": {
             "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
             "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js",
-            "@google/genai": "https://esm.sh/@google/genai@0.1.2"
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
         }
     }
     </script>
@@ -260,13 +259,11 @@
                 const [
                     { initializeApp },
                     { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithRedirect, getRedirectResult },
-                    { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy },
-                    { GoogleGenAI }
+                    { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy }
                 ] = await Promise.all([
                     import("firebase/app"),
                     import("firebase/auth"),
-                    import("firebase/firestore"),
-                    import("@google/genai")
+                    import("firebase/firestore")
                 ]);
 
                 // 1. DATOS Y CONFIGURACIÓN DE PROYECTO
@@ -434,16 +431,25 @@
                         btnIa.disabled = true;
                         btnIa.innerHTML = '<span class="text-sm">✨</span> Generando...';
                         
-                        const ai = new GoogleGenAI({ apiKey: AI_STUDIO_KEY });
                         const prompt = `Reescribe el siguiente texto como una notificación push concisa, llamativa y atractiva para dispositivos móviles. Debe ser corta (máximo 120 caracteres) y generar engagement. Usa emojis si es apropiado. Texto original: "${textoOriginal}"`;
                         
-                        const response = await ai.models.generateContent({
-                            model: 'gemini-2.5-flash',
-                            contents: prompt,
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${AI_STUDIO_KEY}`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: prompt }] }]
+                            })
                         });
+
+                        const data = await res.json();
                         
-                        if (response.text) {
-                            mensajeInput.value = response.text.replace(/"/g, '').trim();
+                        if (data.error) {
+                            throw new Error(data.error.message);
+                        }
+
+                        if (data.candidates && data.candidates.length > 0) {
+                            const generatedText = data.candidates[0].content.parts[0].text;
+                            mensajeInput.value = generatedText.replace(/"/g, '').trim();
                             showAlert("✨ Mensaje mejorado con éxito por la IA.");
                         }
                     } catch (error) {
