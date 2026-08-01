@@ -371,12 +371,23 @@
                 });
 
                 btnLogin.addEventListener('click', async () => {
+                    alert("Botón de login presionado. Inicializando popup de Google...");
+                    console.log("Auth object:", auth);
+                    console.log("Provider object:", provider);
+                    
+                    if (!auth || !provider) {
+                        alert("Error interno: auth o provider no están inicializados.");
+                        return;
+                    }
+
                     try {
                         btnLogin.disabled = true;
                         btnLogin.innerHTML = 'Conectando con Google...';
-                        await signInWithPopup(auth, provider);
+                        const result = await signInWithPopup(auth, provider);
+                        console.log("Login exitoso:", result.user);
                     } catch (error) {
-                        console.error("Error Auth:", error);
+                        console.error("Error Auth Completo:", error);
+                        alert("Error detectado:\nCódigo: " + error.code + "\nMensaje: " + error.message);
                         
                         if (error.code === 'auth/popup-blocked') {
                             alert("El navegador bloqueó la ventana emergente. Intentando redirección automática...");
@@ -391,12 +402,10 @@
                         } else {
                             // Si el error es de red o popup no funciona, intentar redirección como último recurso si están en móvil.
                             if (window.innerWidth <= 768) {
-                                if (confirm("Hubo un error con la ventana emergente. ¿Deseas intentar iniciar sesión recargando la página (Redirección)?")) {
+                                if (confirm("Hubo un error con la ventana emergente (" + error.message + "). ¿Deseas intentar iniciar sesión recargando la página (Redirección)?")) {
                                     signInWithRedirect(auth, provider);
                                     return;
                                 }
-                            } else {
-                                alert("Error al iniciar sesión: " + error.message + " (" + error.code + ")");
                             }
                         }
                         
@@ -519,11 +528,11 @@
                 }
             } catch (error) {
                 console.error("Error crítico de inicialización:", error);
-                document.body.innerHTML = \`<div style="padding:40px; text-align:center; font-family:sans-serif;">
+                document.body.innerHTML = `<div style="padding:40px; text-align:center; font-family:sans-serif;">
                     <h2 style="color:#ef4444; margin-bottom: 10px;">Error al Cargar la Aplicación</h2>
-                    <p style="color:#475569; max-width: 600px; margin: 0 auto;">No se pudieron cargar los módulos necesarios (\${error.message}).</p>
+                    <p style="color:#475569; max-width: 600px; margin: 0 auto;">No se pudieron cargar los módulos necesarios (${error.message}).</p>
                     <p style="color:#64748b; font-size: 13px; margin-top: 15px;">Si estás viendo esto en GitHub Pages, es posible que el navegador esté bloqueando la importación de scripts de terceros o haya un problema de caché. Intenta recargar la página sin caché (Ctrl+Shift+R o Cmd+Shift+R).</p>
-                </div>\`;
+                </div>`;
             }
         }
 
