@@ -1,0 +1,6 @@
+{
+  "name": "Frontiers Notifications",
+  "description": "Panel de Control para Notificaciones Push con IA y Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

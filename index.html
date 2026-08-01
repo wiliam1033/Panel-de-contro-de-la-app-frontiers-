@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Notificaciones</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <style>
+        body { margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Nav Item active state overrides */
+        .nav-item { border-left-width: 4px; border-color: transparent; }
+        .nav-item.active { background-color: rgba(79, 70, 229, 0.2); color: #818cf8; border-color: #6366f1; }
+        .nav-item:not(.active):hover { background-color: rgba(255, 255, 255, 0.05); color: white; }
+
+        /* Responsive Sidebar */
+        @media (max-width: 768px) {
+            #sidebar { transform: translateX(-100%); position: fixed; height: 100%; }
+            #sidebar.open { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="bg-[#f4f6f9] text-[#1e293b] font-['Segoe_UI',sans-serif]">
+
+    <!-- Pantalla de Login -->
+    <div id="login-screen" class="fixed inset-0 bg-[#0f172a] flex flex-col justify-center items-center z-[1000] text-white">
+        <div class="bg-white p-10 rounded-2xl shadow-xl text-center text-gray-800 max-w-[400px] w-[90%] border border-gray-100">
+            <div class="flex items-center justify-center gap-3 mb-6">
+                <div class="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                </div>
+            </div>
+            <h1 class="text-2xl font-extrabold tracking-tight mb-2 text-gray-900">Frontiers Push</h1>
+            <p class="mb-8 text-gray-500 text-sm font-medium">Inicia sesión para gestionar alertas</p>
+            <button id="btn-login" class="w-full bg-white border border-gray-200 text-gray-700 py-3.5 px-4 rounded-xl font-bold shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Iniciar sesión con Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden h-full w-full flex-row overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-72 bg-[#0f172a] text-white flex flex-col shrink-0 transition-transform duration-300 z-20 shadow-2xl md:shadow-none">
+            <div class="p-6 flex-grow">
+                <div class="flex items-center gap-3 mb-10">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                    </div>
+                    <h1 class="text-xl font-extrabold tracking-tight">Frontiers Push</h1>
+                </div>
+                <nav class="space-y-1.5 nav-menu">
+                    <a href="#" class="nav-item active flex items-center gap-3 px-4 py-3 text-gray-400 rounded-lg transition-colors cursor-pointer" data-target="tab-notificaciones">
+                        <span class="text-lg">📢</span>
+                        <span class="font-medium">Notificaciones</span>
+                    </a>
+                    <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 text-gray-400 rounded-lg transition-colors cursor-pointer" data-target="tab-historial">
+                        <span class="text-lg">📜</span>
+                        <span class="font-medium">Historial</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="mt-auto p-6 border-t border-white/5 bg-[#0a0f1c]">
+                <div class="flex items-center gap-3">
+                    <img id="user-photo" src="" class="w-10 h-10 rounded-full bg-gray-700 object-cover hidden border-2 border-gray-600" alt="Profile" />
+                    <div class="flex-1 min-w-0">
+                        <p id="user-name" class="text-sm font-semibold truncate text-white">Usuario</p>
+                        <p class="text-[11px] font-medium text-gray-400 uppercase tracking-wider truncate">Administrador</p>
+                    </div>
+                    <button id="btn-logout" class="p-2 text-gray-400 hover:text-red-400 transition-colors rounded-lg hover:bg-white/5" title="Cerrar sesión">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 h-full relative">
+            <!-- Topbar -->
+            <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 shrink-0 z-10">
+                <div class="flex items-center gap-4">
+                    <button id="menu-toggle" class="md:hidden text-gray-500 hover:text-gray-800 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </button>
+                    <h2 class="text-lg font-bold text-gray-800 hidden md:block">Panel de Control</h2>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        Servicio Activo
+                    </span>
+                    <div class="hidden md:block h-6 w-px bg-gray-200"></div>
+                    <button class="hidden md:block text-sm text-gray-500 hover:text-indigo-600 transition-colors font-medium">Ayuda</button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="p-4 md:p-8 flex-1 overflow-y-auto bg-[#f4f6f9]">
+                <div id="alert" class="hidden mb-6 p-4 rounded-xl text-sm font-medium border shadow-sm"></div>
+
+                <!-- Pestaña: Notificaciones -->
+                <div id="tab-notificaciones" class="tab-content active h-full">
+                    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 h-full max-w-6xl mx-auto">
+                        <!-- Composer -->
+                        <div class="xl:col-span-7 flex flex-col">
+                            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex-shrink-0">
+                                <div class="p-5 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                    <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                                        <span class="text-xl">✉️</span> Crear Nueva Notificación
+                                    </h3>
+                                    <span class="text-[10px] uppercase tracking-wider text-gray-400 font-bold hidden sm:inline-block">Campaña Global</span>
+                                </div>
+                                <div class="p-5 md:p-6 space-y-4">
+                                    <div class="relative">
+                                        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Mensaje del Anuncio</label>
+                                        <textarea id="mensaje-input" 
+                                            class="w-full h-32 md:h-40 p-4 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-none placeholder-gray-400"
+                                            placeholder="Escribe tu idea aquí para enviarla o mejorarla con IA..."
+                                        ></textarea>
+                                        <button id="btn-ia" class="absolute bottom-3 right-3 flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors border border-indigo-100 disabled:opacity-50">
+                                            <span class="text-sm">✨</span> Mejorar con Gemini AI
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center justify-between pt-3">
+                                        <div class="flex gap-2 hidden sm:flex">
+                                            <span class="p-2 bg-gray-50 border border-gray-100 rounded-lg text-gray-400 cursor-help" title="Programar envío (Próximamente)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </span>
+                                        </div>
+                                        <button id="btn-send" class="w-full sm:w-auto px-6 py-2.5 bg-[#0f172a] text-white rounded-xl font-bold text-sm shadow-lg shadow-gray-300/50 hover:bg-indigo-600 hover:shadow-indigo-200 transition-all flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                                            🚀 Enviar a todos
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Analytics Panel (Static Visuals matching Theme) -->
+                        <div class="xl:col-span-5 flex flex-col gap-6">
+                            <div class="bg-indigo-600 rounded-2xl p-6 text-white shadow-xl shadow-indigo-200 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500 to-indigo-700">
+                                <p class="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mb-1">Alcance Estimado</p>
+                                <h4 class="text-4xl font-black mb-4 flex items-baseline gap-2">12,482 <span class="text-base font-medium opacity-70 tracking-normal font-normal">usuarios</span></h4>
+                                <div class="flex items-center gap-4 text-sm">
+                                    <div class="flex -space-x-2">
+                                        <div class="w-8 h-8 rounded-full border-2 border-indigo-600 bg-gray-300"></div>
+                                        <div class="w-8 h-8 rounded-full border-2 border-indigo-600 bg-gray-400"></div>
+                                        <div class="w-8 h-8 rounded-full border-2 border-indigo-600 bg-gray-500"></div>
+                                    </div>
+                                    <p class="text-indigo-100 font-medium text-xs bg-black/10 px-3 py-1.5 rounded-full">+152 registrados hoy</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tasa de Apertura</p>
+                                    <p class="text-2xl font-black text-gray-800 mt-1">18.4%</p>
+                                </div>
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Clics Generados</p>
+                                    <p class="text-2xl font-black text-gray-800 mt-1">2.3k</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pestaña: Historial -->
+                <div id="tab-historial" class="tab-content h-full">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden max-w-6xl mx-auto h-full min-h-[500px]">
+                        <div class="p-5 md:p-6 border-b border-gray-100 flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center bg-gray-50/50 shrink-0">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                                <span class="text-xl">📜</span> Historial de Envíos
+                            </h3>
+                            <div class="flex gap-2">
+                                <input type="text" placeholder="Buscar mensajes..." class="text-xs bg-white border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none w-full sm:w-56 shadow-sm" />
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-auto">
+                            <table id="historial-table" class="w-full text-left border-collapse min-w-[700px]">
+                                <thead class="sticky top-0 bg-gray-50/95 backdrop-blur-sm text-[10px] font-bold text-gray-500 uppercase tracking-wider z-10 shadow-sm">
+                                    <tr>
+                                        <th class="px-6 py-4 border-b border-gray-100 w-48">Fecha y Hora</th>
+                                        <th class="px-6 py-4 border-b border-gray-100">Mensaje Enviado</th>
+                                        <th class="px-6 py-4 border-b border-gray-100 w-56">Remitente</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-sm">
+                                    <!-- Registros dinámicos -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Import Maps para ES Modules desde CDN -->
+    <script type="importmap">
+    {
+        "imports": {
+            "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
+            "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js",
+            "@google/genai": "https://esm.sh/@google/genai@0.1.2"
+        }
+    }
+    </script>
+
+    <!-- Lógica de la Aplicación -->
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
+        import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy } from "firebase/firestore";
+        import { GoogleGenAI } from "@google/genai";
+
+        // 1. DATOS Y CONFIGURACIÓN DE PROYECTO
+        const firebaseConfig = {
+            apiKey: "AIzaSyC49Zd3E3bKiM3oByOmMsRWCvyrzgpfnrA",
+            authDomain: "frontiers-notifications.firebaseapp.com",
+            projectId: "frontiers-notifications",
+            storageBucket: "frontiers-notifications.firebasestorage.app",
+            messagingSenderId: "38960687904",
+            appId: "1:38960687904:web:af1b4aed937cdd37f20545",
+            measurementId: "G-TGSDZJZTWR"
+        };
+        
+        const AI_STUDIO_KEY = "TU_API_KEY_DE_AI_STUDIO";
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        let currentUser = null;
+
+        // Elementos del DOM
+        const loginScreen = document.getElementById('login-screen');
+        const dashboard = document.getElementById('dashboard');
+        const btnLogin = document.getElementById('btn-login');
+        const btnLogout = document.getElementById('btn-logout');
+        const userNameEl = document.getElementById('user-name');
+        const userPhotoEl = document.getElementById('user-photo');
+        const alertEl = document.getElementById('alert');
+        
+        const navItems = document.querySelectorAll('.nav-item');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        const mensajeInput = document.getElementById('mensaje-input');
+        const btnIa = document.getElementById('btn-ia');
+        const btnSend = document.getElementById('btn-send');
+        const historialTableBody = document.querySelector('#historial-table tbody');
+
+        // Utilidad para Alertas
+        function showAlert(msg, isError = false) {
+            alertEl.textContent = msg;
+            alertEl.className = 'mb-6 p-4 rounded-xl text-sm font-bold border shadow-sm ' + 
+                (isError ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200');
+            alertEl.classList.remove('hidden');
+            setTimeout(() => { alertEl.classList.add('hidden'); }, 5000);
+        }
+
+        // Lógica de Pestañas y Sidebar
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                navItems.forEach(n => n.classList.remove('active'));
+                item.classList.add('active');
+                
+                const targetId = item.getAttribute('data-target');
+                tabContents.forEach(t => {
+                    t.classList.remove('active');
+                    if (t.id === targetId) t.classList.add('active');
+                });
+                
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        });
+
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        // 2. AUTENTICACIÓN FIREBASE
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                loginScreen.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+                dashboard.classList.add('flex');
+                userNameEl.textContent = user.displayName || user.email;
+                if (user.photoURL) {
+                    userPhotoEl.src = user.photoURL;
+                    userPhotoEl.classList.remove('hidden');
+                }
+                iniciarEscuchaHistorial();
+            } else {
+                currentUser = null;
+                loginScreen.classList.remove('hidden');
+                dashboard.classList.add('hidden');
+                dashboard.classList.remove('flex');
+            }
+        });
+
+        btnLogin.addEventListener('click', async () => {
+            try {
+                btnLogin.disabled = true;
+                btnLogin.innerHTML = 'Iniciando sesión...';
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Error Auth:", error);
+                alert("Error al iniciar sesión: " + error.message);
+                btnLogin.disabled = false;
+                btnLogin.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Iniciar sesión con Google';
+            }
+        });
+
+        btnLogout.addEventListener('click', () => {
+            signOut(auth);
+        });
+
+        // 3. IA CON GEMINI (Mejorar texto)
+        btnIa.addEventListener('click', async () => {
+            const textoOriginal = mensajeInput.value.trim();
+            if (!textoOriginal) {
+                showAlert("Por favor, escribe un mensaje primero en el área de texto.", true);
+                return;
+            }
+            if (AI_STUDIO_KEY === "TU_API_KEY_DE_AI_STUDIO" || !AI_STUDIO_KEY) {
+                showAlert("Error: Debes colocar tu API Key de AI Studio en la constante AI_STUDIO_KEY del código.", true);
+                return;
+            }
+
+            try {
+                btnIa.disabled = true;
+                btnIa.innerHTML = '<span class="text-sm">✨</span> Generando...';
+                
+                const ai = new GoogleGenAI({ apiKey: AI_STUDIO_KEY });
+                const prompt = `Reescribe el siguiente texto como una notificación push concisa, llamativa y atractiva para dispositivos móviles. Debe ser corta (máximo 120 caracteres) y generar engagement. Usa emojis si es apropiado. Texto original: "${textoOriginal}"`;
+                
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                });
+                
+                if (response.text) {
+                    mensajeInput.value = response.text.replace(/"/g, '').trim();
+                    showAlert("✨ Mensaje mejorado con éxito por la IA.");
+                }
+            } catch (error) {
+                console.error("Error Gemini:", error);
+                showAlert("Error al conectar con Gemini: " + error.message, true);
+            } finally {
+                btnIa.disabled = false;
+                btnIa.innerHTML = '<span class="text-sm">✨</span> Mejorar con Gemini AI';
+            }
+        });
+
+        // 4. GUARDAR NOTIFICACIÓN EN FIRESTORE
+        btnSend.addEventListener('click', async () => {
+            const mensaje = mensajeInput.value.trim();
+            if (!mensaje) {
+                showAlert("El mensaje no puede estar vacío.", true);
+                return;
+            }
+
+            try {
+                btnSend.disabled = true;
+                btnSend.innerHTML = '🚀 Enviando...';
+                
+                await addDoc(collection(db, "notificaciones"), {
+                    mensaje: mensaje,
+                    enviadoPor: currentUser.displayName || currentUser.email,
+                    fecha: serverTimestamp()
+                });
+                
+                showAlert("🚀 ¡Notificación guardada y enviada correctamente!");
+                mensajeInput.value = '';
+            } catch (error) {
+                console.error("Error Firestore:", error);
+                showAlert("Error al guardar: " + error.message, true);
+            } finally {
+                btnSend.disabled = false;
+                btnSend.innerHTML = '🚀 Enviar a todos';
+            }
+        });
+
+        // 5. ESCUCHAR HISTORIAL EN TIEMPO REAL (onSnapshot)
+        let unsubscribeHistorial = null;
+        function iniciarEscuchaHistorial() {
+            if (unsubscribeHistorial) return;
+            
+            const q = query(collection(db, "notificaciones"), orderBy("fecha", "desc"));
+            
+            unsubscribeHistorial = onSnapshot(q, (snapshot) => {
+                historialTableBody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    historialTableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center text-gray-500 font-medium">No hay notificaciones en el historial.</td></tr>';
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const fechaObj = data.fecha ? data.fecha.toDate() : new Date();
+                    const fechaStr = fechaObj.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+                    
+                    const remitente = data.enviadoPor || 'Desconocido';
+                    const inicial = remitente.charAt(0).toUpperCase();
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50/50 transition-colors';
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500 font-medium text-xs">${fechaStr}</td>
+                        <td class="px-6 py-4 text-gray-800 font-medium">${data.mensaje || ''}</td>
+                        <td class="px-6 py-4 flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700 shadow-sm border border-indigo-200">${inicial}</div>
+                            <span class="text-gray-600 font-medium text-sm">${remitente}</span>
+                        </td>
+                    `;
+                    historialTableBody.appendChild(tr);
+                });
+            }, (error) => {
+                console.error("Error OnSnapshot:", error);
+                if (error.code === 'permission-denied') {
+                    historialTableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center text-red-500 font-bold bg-red-50/50">Faltan permisos. Verifica las reglas de Firestore.</td></tr>';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
