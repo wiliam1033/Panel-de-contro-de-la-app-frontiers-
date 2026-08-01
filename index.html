@@ -234,276 +234,301 @@
 
     <!-- Lógica de la Aplicación -->
     <script type="module">
-        import { initializeApp } from "firebase/app";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithRedirect, getRedirectResult } from "firebase/auth";
-        import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy } from "firebase/firestore";
-        import { GoogleGenAI } from "@google/genai";
-
-        // 1. DATOS Y CONFIGURACIÓN DE PROYECTO
-        const firebaseConfig = {
-            apiKey: "AIzaSyC49Zd3E3bKiM3oByOmMsRWCvyrzgpfnrA",
-            authDomain: "frontiers-notifications.firebaseapp.com",
-            projectId: "frontiers-notifications",
-            storageBucket: "frontiers-notifications.firebasestorage.app",
-            messagingSenderId: "38960687904",
-            appId: "1:38960687904:web:af1b4aed937cdd37f20545",
-            measurementId: "G-TGSDZJZTWR"
-        };
-        
-        const AI_STUDIO_KEY = "TU_API_KEY_DE_AI_STUDIO";
-
-        // Prevenir "pantallas blancas" capturando errores globales
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('Error no manejado:', event.reason);
-        });
-
-        // Inicializar Firebase
-        let app, auth, db, provider;
-        let currentUser = null;
-        try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            provider = new GoogleAuthProvider();
-
-            // Revisar si venimos de una redirección de inicio de sesión
-            getRedirectResult(auth).then((result) => {
-                if (result && result.user) {
-                    console.log("Sesión iniciada vía redirección:", result.user.email);
-                }
-            }).catch((error) => {
-                console.error("Error post-redirección:", error);
-                alert("Error al iniciar sesión tras redirección: " + error.message);
-            });
-
-        } catch (error) {
-            console.error("Error crítico inicializando Firebase:", error);
-            document.body.innerHTML = `<div style="padding:40px; text-align:center; font-family:sans-serif;">
-                <h2 style="color:#ef4444;">Error de Configuración</h2>
-                <p style="color:#475569;">No se pudo inicializar Firebase. Revisa la consola del navegador para más detalles.</p>
-            </div>`;
-        }
-
-        // Elementos del DOM
+        // Elementos del DOM iniciales
         const loginScreen = document.getElementById('login-screen');
         const dashboard = document.getElementById('dashboard');
         const btnLogin = document.getElementById('btn-login');
-        const btnLogout = document.getElementById('btn-logout');
-        const userNameEl = document.getElementById('user-name');
-        const userPhotoEl = document.getElementById('user-photo');
         const alertEl = document.getElementById('alert');
         
-        const navItems = document.querySelectorAll('.nav-item');
-        const tabContents = document.querySelectorAll('.tab-content');
-        const menuToggle = document.getElementById('menu-toggle');
-        const sidebar = document.getElementById('sidebar');
-        
-        const mensajeInput = document.getElementById('mensaje-input');
-        const btnIa = document.getElementById('btn-ia');
-        const btnSend = document.getElementById('btn-send');
-        const historialTableBody = document.querySelector('#historial-table tbody');
-
-        // Utilidad para Alertas
         function showAlert(msg, isError = false) {
             alertEl.textContent = msg;
             alertEl.className = 'mb-6 p-4 rounded-xl text-sm font-bold border shadow-sm ' + 
                 (isError ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200');
             alertEl.classList.remove('hidden');
-            setTimeout(() => { alertEl.classList.add('hidden'); }, 5000);
+            setTimeout(() => { alertEl.classList.add('hidden'); }, 8000);
         }
 
-        // Lógica de Pestañas y Sidebar
-        navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                navItems.forEach(n => n.classList.remove('active'));
-                item.classList.add('active');
-                
-                const targetId = item.getAttribute('data-target');
-                tabContents.forEach(t => {
-                    t.classList.remove('active');
-                    if (t.id === targetId) t.classList.add('active');
-                });
-                
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.remove('open');
-                }
-            });
-        });
+        // Estado inicial de carga
+        if (btnLogin) {
+            btnLogin.disabled = true;
+            btnLogin.innerHTML = 'Cargando módulos...';
+        }
 
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-        });
-
-        // 2. AUTENTICACIÓN FIREBASE
-        if (auth) onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                loginScreen.classList.add('hidden');
-                dashboard.classList.remove('hidden');
-                dashboard.classList.add('flex');
-                userNameEl.textContent = user.displayName || user.email;
-                if (user.photoURL) {
-                    userPhotoEl.src = user.photoURL;
-                    userPhotoEl.classList.remove('hidden');
-                }
-                iniciarEscuchaHistorial();
-            } else {
-                currentUser = null;
-                loginScreen.classList.remove('hidden');
-                dashboard.classList.add('hidden');
-                dashboard.classList.remove('flex');
-            }
-        });
-
-        btnLogin.addEventListener('click', async () => {
-            if (!auth) return alert("Firebase no está inicializado. Revisa la consola para ver errores.");
+        async function initApp() {
             try {
-                btnLogin.disabled = true;
-                btnLogin.innerHTML = 'Conectando con Google...';
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                console.error("Error Auth:", error);
+                // Importar dinámicamente para capturar errores si falla el CDN
+                const [
+                    { initializeApp },
+                    { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithRedirect, getRedirectResult },
+                    { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy },
+                    { GoogleGenAI }
+                ] = await Promise.all([
+                    import("firebase/app"),
+                    import("firebase/auth"),
+                    import("firebase/firestore"),
+                    import("@google/genai")
+                ]);
+
+                // 1. DATOS Y CONFIGURACIÓN DE PROYECTO
+                const firebaseConfig = {
+                    apiKey: "AIzaSyC49Zd3E3bKiM3oByOmMsRWCvyrzgpfnrA",
+                    authDomain: "frontiers-notifications.firebaseapp.com",
+                    projectId: "frontiers-notifications",
+                    storageBucket: "frontiers-notifications.firebasestorage.app",
+                    messagingSenderId: "38960687904",
+                    appId: "1:38960687904:web:af1b4aed937cdd37f20545",
+                    measurementId: "G-TGSDZJZTWR"
+                };
                 
-                if (error.code === 'auth/popup-blocked') {
-                    alert("El navegador bloqueó la ventana emergente. Intentando redirección automática...");
-                    signInWithRedirect(auth, provider);
-                    return;
-                } else if (error.code === 'auth/unauthorized-domain') {
-                    alert(`DOMINIO NO AUTORIZADO\n\nDebes agregar "${window.location.hostname}" a los Dominios Autorizados.\n\nEn la consola de Firebase:\n1. Authentication -> Configuración (Settings)\n2. Dominios Autorizados (Authorized domains)\n3. Agrega: ${window.location.hostname}`);
-                } else if (error.code === 'auth/operation-not-allowed') {
-                    alert("PROVEEDOR NO HABILITADO\n\nDebes habilitar Google en Firebase:\n1. Consola de Firebase -> Authentication\n2. Pestaña 'Sign-in method'\n3. Habilita Google y guarda.");
-                } else if (error.code === 'auth/popup-closed-by-user') {
-                    console.log("El usuario cerró el popup de autenticación.");
-                } else {
-                    // Si el error es de red o popup no funciona, intentar redirección como último recurso si están en móvil.
-                    if (window.innerWidth <= 768) {
-                        if (confirm("Hubo un error con la ventana emergente. ¿Deseas intentar iniciar sesión recargando la página (Redirección)?")) {
+                const AI_STUDIO_KEY = "TU_API_KEY_DE_AI_STUDIO";
+
+                // Prevenir "pantallas blancas" capturando errores globales
+                window.addEventListener('unhandledrejection', (event) => {
+                    console.error('Error no manejado:', event.reason);
+                });
+
+                // Inicializar Firebase
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+                const provider = new GoogleAuthProvider();
+
+                // Restaurar botón
+                if (btnLogin) {
+                    btnLogin.disabled = false;
+                    btnLogin.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Iniciar sesión con Google`;
+                }
+
+                // Revisar si venimos de una redirección de inicio de sesión
+                getRedirectResult(auth).then((result) => {
+                    if (result && result.user) {
+                        console.log("Sesión iniciada vía redirección:", result.user.email);
+                    }
+                }).catch((error) => {
+                    console.error("Error post-redirección:", error);
+                    alert("Error al iniciar sesión tras redirección: " + error.message);
+                });
+
+                let currentUser = null;
+
+                // Resto de variables DOM
+                const btnLogout = document.getElementById('btn-logout');
+                const userNameEl = document.getElementById('user-name');
+                const userPhotoEl = document.getElementById('user-photo');
+                
+                const navItems = document.querySelectorAll('.nav-item');
+                const tabContents = document.querySelectorAll('.tab-content');
+                const menuToggle = document.getElementById('menu-toggle');
+                const sidebar = document.getElementById('sidebar');
+                
+                const mensajeInput = document.getElementById('mensaje-input');
+                const btnIa = document.getElementById('btn-ia');
+                const btnSend = document.getElementById('btn-send');
+                const historialTableBody = document.querySelector('#historial-table tbody');
+
+                // Lógica de Pestañas y Sidebar
+                navItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        navItems.forEach(n => n.classList.remove('active'));
+                        item.classList.add('active');
+                        
+                        const targetId = item.getAttribute('data-target');
+                        tabContents.forEach(t => {
+                            t.classList.remove('active');
+                            if (t.id === targetId) t.classList.add('active');
+                        });
+                        
+                        if (window.innerWidth <= 768) {
+                            sidebar.classList.remove('open');
+                        }
+                    });
+                });
+
+                menuToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('open');
+                });
+
+                // 2. AUTENTICACIÓN FIREBASE
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        loginScreen.classList.add('hidden');
+                        dashboard.classList.remove('hidden');
+                        dashboard.classList.add('flex');
+                        userNameEl.textContent = user.displayName || user.email;
+                        if (user.photoURL) {
+                            userPhotoEl.src = user.photoURL;
+                            userPhotoEl.classList.remove('hidden');
+                        }
+                        iniciarEscuchaHistorial();
+                    } else {
+                        currentUser = null;
+                        loginScreen.classList.remove('hidden');
+                        dashboard.classList.add('hidden');
+                        dashboard.classList.remove('flex');
+                    }
+                });
+
+                btnLogin.addEventListener('click', async () => {
+                    try {
+                        btnLogin.disabled = true;
+                        btnLogin.innerHTML = 'Conectando con Google...';
+                        await signInWithPopup(auth, provider);
+                    } catch (error) {
+                        console.error("Error Auth:", error);
+                        
+                        if (error.code === 'auth/popup-blocked') {
+                            alert("El navegador bloqueó la ventana emergente. Intentando redirección automática...");
                             signInWithRedirect(auth, provider);
                             return;
+                        } else if (error.code === 'auth/unauthorized-domain') {
+                            alert(`DOMINIO NO AUTORIZADO\n\nDebes agregar "${window.location.hostname}" a los Dominios Autorizados.\n\nEn la consola de Firebase:\n1. Authentication -> Configuración (Settings)\n2. Dominios Autorizados (Authorized domains)\n3. Agrega: ${window.location.hostname}`);
+                        } else if (error.code === 'auth/operation-not-allowed') {
+                            alert("PROVEEDOR NO HABILITADO\n\nDebes habilitar Google en Firebase:\n1. Consola de Firebase -> Authentication\n2. Pestaña 'Sign-in method'\n3. Habilita Google y guarda.");
+                        } else if (error.code === 'auth/popup-closed-by-user') {
+                            console.log("El usuario cerró el popup de autenticación.");
+                        } else {
+                            // Si el error es de red o popup no funciona, intentar redirección como último recurso si están en móvil.
+                            if (window.innerWidth <= 768) {
+                                if (confirm("Hubo un error con la ventana emergente. ¿Deseas intentar iniciar sesión recargando la página (Redirección)?")) {
+                                    signInWithRedirect(auth, provider);
+                                    return;
+                                }
+                            } else {
+                                alert("Error al iniciar sesión: " + error.message + " (" + error.code + ")");
+                            }
                         }
-                    } else {
-                        alert("Error al iniciar sesión: " + error.message + " (" + error.code + ")");
+                        
+                        btnLogin.disabled = false;
+                        btnLogin.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Iniciar sesión con Google';
                     }
-                }
-                
-                btnLogin.disabled = false;
-                btnLogin.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Iniciar sesión con Google';
-            }
-        });
-
-        btnLogout.addEventListener('click', () => {
-            signOut(auth);
-        });
-
-        // 3. IA CON GEMINI (Mejorar texto)
-        btnIa.addEventListener('click', async () => {
-            const textoOriginal = mensajeInput.value.trim();
-            if (!textoOriginal) {
-                showAlert("Por favor, escribe un mensaje primero en el área de texto.", true);
-                return;
-            }
-            if (AI_STUDIO_KEY === "TU_API_KEY_DE_AI_STUDIO" || !AI_STUDIO_KEY) {
-                showAlert("Error: Debes colocar tu API Key de AI Studio en la constante AI_STUDIO_KEY del código.", true);
-                return;
-            }
-
-            try {
-                btnIa.disabled = true;
-                btnIa.innerHTML = '<span class="text-sm">✨</span> Generando...';
-                
-                const ai = new GoogleGenAI({ apiKey: AI_STUDIO_KEY });
-                const prompt = `Reescribe el siguiente texto como una notificación push concisa, llamativa y atractiva para dispositivos móviles. Debe ser corta (máximo 120 caracteres) y generar engagement. Usa emojis si es apropiado. Texto original: "${textoOriginal}"`;
-                
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: prompt,
                 });
-                
-                if (response.text) {
-                    mensajeInput.value = response.text.replace(/"/g, '').trim();
-                    showAlert("✨ Mensaje mejorado con éxito por la IA.");
-                }
-            } catch (error) {
-                console.error("Error Gemini:", error);
-                showAlert("Error al conectar con Gemini: " + error.message, true);
-            } finally {
-                btnIa.disabled = false;
-                btnIa.innerHTML = '<span class="text-sm">✨</span> Mejorar con Gemini AI';
-            }
-        });
 
-        // 4. GUARDAR NOTIFICACIÓN EN FIRESTORE
-        btnSend.addEventListener('click', async () => {
-            const mensaje = mensajeInput.value.trim();
-            if (!mensaje) {
-                showAlert("El mensaje no puede estar vacío.", true);
-                return;
-            }
-
-            try {
-                btnSend.disabled = true;
-                btnSend.innerHTML = '🚀 Enviando...';
-                
-                await addDoc(collection(db, "notificaciones"), {
-                    mensaje: mensaje,
-                    enviadoPor: currentUser.displayName || currentUser.email,
-                    fecha: serverTimestamp()
+                btnLogout.addEventListener('click', () => {
+                    signOut(auth);
                 });
-                
-                showAlert("🚀 ¡Notificación guardada y enviada correctamente!");
-                mensajeInput.value = '';
-            } catch (error) {
-                console.error("Error Firestore:", error);
-                showAlert("Error al guardar: " + error.message, true);
-            } finally {
-                btnSend.disabled = false;
-                btnSend.innerHTML = '🚀 Enviar a todos';
-            }
-        });
 
-        // 5. ESCUCHAR HISTORIAL EN TIEMPO REAL (onSnapshot)
-        let unsubscribeHistorial = null;
-        function iniciarEscuchaHistorial() {
-            if (unsubscribeHistorial) return;
-            
-            const q = query(collection(db, "notificaciones"), orderBy("fecha", "desc"));
-            
-            unsubscribeHistorial = onSnapshot(q, (snapshot) => {
-                historialTableBody.innerHTML = '';
-                
-                if (snapshot.empty) {
-                    historialTableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center text-gray-500 font-medium">No hay notificaciones en el historial.</td></tr>';
-                    return;
-                }
+                // 3. IA CON GEMINI (Mejorar texto)
+                btnIa.addEventListener('click', async () => {
+                    const textoOriginal = mensajeInput.value.trim();
+                    if (!textoOriginal) {
+                        showAlert("Por favor, escribe un mensaje primero en el área de texto.", true);
+                        return;
+                    }
+                    if (AI_STUDIO_KEY === "TU_API_KEY_DE_AI_STUDIO" || !AI_STUDIO_KEY) {
+                        showAlert("Error: Debes colocar tu API Key de AI Studio en la constante AI_STUDIO_KEY del código.", true);
+                        return;
+                    }
 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const fechaObj = data.fecha ? data.fecha.toDate() : new Date();
-                    const fechaStr = fechaObj.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+                    try {
+                        btnIa.disabled = true;
+                        btnIa.innerHTML = '<span class="text-sm">✨</span> Generando...';
+                        
+                        const ai = new GoogleGenAI({ apiKey: AI_STUDIO_KEY });
+                        const prompt = `Reescribe el siguiente texto como una notificación push concisa, llamativa y atractiva para dispositivos móviles. Debe ser corta (máximo 120 caracteres) y generar engagement. Usa emojis si es apropiado. Texto original: "${textoOriginal}"`;
+                        
+                        const response = await ai.models.generateContent({
+                            model: 'gemini-2.5-flash',
+                            contents: prompt,
+                        });
+                        
+                        if (response.text) {
+                            mensajeInput.value = response.text.replace(/"/g, '').trim();
+                            showAlert("✨ Mensaje mejorado con éxito por la IA.");
+                        }
+                    } catch (error) {
+                        console.error("Error Gemini:", error);
+                        showAlert("Error al conectar con Gemini: " + error.message, true);
+                    } finally {
+                        btnIa.disabled = false;
+                        btnIa.innerHTML = '<span class="text-sm">✨</span> Mejorar con Gemini AI';
+                    }
+                });
+
+                // 4. GUARDAR NOTIFICACIÓN EN FIRESTORE
+                btnSend.addEventListener('click', async () => {
+                    const mensaje = mensajeInput.value.trim();
+                    if (!mensaje) {
+                        showAlert("El mensaje no puede estar vacío.", true);
+                        return;
+                    }
+
+                    try {
+                        btnSend.disabled = true;
+                        btnSend.innerHTML = '🚀 Enviando...';
+                        
+                        await addDoc(collection(db, "notificaciones"), {
+                            mensaje: mensaje,
+                            enviadoPor: currentUser.displayName || currentUser.email,
+                            fecha: serverTimestamp()
+                        });
+                        
+                        showAlert("🚀 ¡Notificación guardada y enviada correctamente!");
+                        mensajeInput.value = '';
+                    } catch (error) {
+                        console.error("Error Firestore:", error);
+                        showAlert("Error al guardar: " + error.message, true);
+                    } finally {
+                        btnSend.disabled = false;
+                        btnSend.innerHTML = '🚀 Enviar a todos';
+                    }
+                });
+
+                // 5. ESCUCHAR HISTORIAL EN TIEMPO REAL (onSnapshot)
+                let unsubscribeHistorial = null;
+                function iniciarEscuchaHistorial() {
+                    if (unsubscribeHistorial) return;
                     
-                    const remitente = data.enviadoPor || 'Desconocido';
-                    const inicial = remitente.charAt(0).toUpperCase();
+                    const q = query(collection(db, "notificaciones"), orderBy("fecha", "desc"));
+                    
+                    unsubscribeHistorial = onSnapshot(q, (snapshot) => {
+                        historialTableBody.innerHTML = '';
+                        
+                        if (snapshot.empty) {
+                            historialTableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center text-gray-500 font-medium">No hay notificaciones en el historial.</td></tr>';
+                            return;
+                        }
 
-                    const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-gray-50/50 transition-colors';
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-gray-500 font-medium text-xs">${fechaStr}</td>
-                        <td class="px-6 py-4 text-gray-800 font-medium">${data.mensaje || ''}</td>
-                        <td class="px-6 py-4 flex items-center gap-3">
-                            <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700 shadow-sm border border-indigo-200">${inicial}</div>
-                            <span class="text-gray-600 font-medium text-sm">${remitente}</span>
-                        </td>
-                    `;
-                    historialTableBody.appendChild(tr);
-                });
-            }, (error) => {
-                console.error("Error OnSnapshot:", error);
-                if (error.code === 'permission-denied') {
-                    historialTableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center text-red-500 font-bold bg-red-50/50">Faltan permisos. Verifica las reglas de Firestore.</td></tr>';
+                        snapshot.forEach((doc) => {
+                            const data = doc.data();
+                            const fechaObj = data.fecha ? data.fecha.toDate() : new Date();
+                            const fechaStr = fechaObj.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+                            
+                            const remitente = data.enviadoPor || 'Desconocido';
+                            const inicial = remitente.charAt(0).toUpperCase();
+
+                            const tr = document.createElement('tr');
+                            tr.className = 'hover:bg-gray-50/50 transition-colors';
+                            tr.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap text-gray-500 font-medium text-xs">${fechaStr}</td>
+                                <td class="px-6 py-4 text-gray-800 font-medium">${data.mensaje || ''}</td>
+                                <td class="px-6 py-4 flex items-center gap-3">
+                                    <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700 shadow-sm border border-indigo-200">${inicial}</div>
+                                    <span class="text-gray-600 font-medium text-sm">${remitente}</span>
+                                </td>
+                            `;
+                            historialTableBody.appendChild(tr);
+                        });
+                    }, (error) => {
+                        console.error("Error OnSnapshot:", error);
+                        if (error.code === 'permission-denied') {
+                            historialTableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center text-red-500 font-bold bg-red-50/50">Faltan permisos. Verifica las reglas de Firestore.</td></tr>';
+                        }
+                    });
                 }
-            });
+            } catch (error) {
+                console.error("Error crítico de inicialización:", error);
+                document.body.innerHTML = \`<div style="padding:40px; text-align:center; font-family:sans-serif;">
+                    <h2 style="color:#ef4444; margin-bottom: 10px;">Error al Cargar la Aplicación</h2>
+                    <p style="color:#475569; max-width: 600px; margin: 0 auto;">No se pudieron cargar los módulos necesarios (\${error.message}).</p>
+                    <p style="color:#64748b; font-size: 13px; margin-top: 15px;">Si estás viendo esto en GitHub Pages, es posible que el navegador esté bloqueando la importación de scripts de terceros o haya un problema de caché. Intenta recargar la página sin caché (Ctrl+Shift+R o Cmd+Shift+R).</p>
+                </div>\`;
+            }
         }
+
+        // Iniciar
+        initApp();
     </script>
 </body>
 </html>
