@@ -1,6 +1,8 @@
 import express from "express";
 import fs from "fs";
 import path from "path";
+import http from "http";
+import https from "https";
 import { createServer as createViteServer } from "vite";
 
 async function startServer() {
@@ -9,6 +11,48 @@ async function startServer() {
 
   // Middleware to parse JSON bodies
   app.use(express.json());
+
+  // API endpoint to proxy HTTP streams safely over HTTPS
+  app.get("/api/proxy-stream", (req, res) => {
+    const streamUrl = req.query.url as string;
+    if (!streamUrl) {
+      return res.status(400).send("Falta el parámetro 'url' del streaming.");
+    }
+
+    try {
+      const parsedUrl = new URL(streamUrl);
+      const client = parsedUrl.protocol === "https:" ? https : http;
+
+      // Configure headers for audio streaming
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Transfer-Encoding", "chunked");
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+
+      const proxyReq = client.get(streamUrl, (proxyRes) => {
+        if (proxyRes.headers["content-type"]) {
+          res.setHeader("Content-Type", proxyRes.headers["content-type"]);
+        }
+        proxyRes.pipe(res);
+      });
+
+      proxyReq.on("error", (err) => {
+        console.error("Error en la conexión del streaming proxy:", err);
+        if (!res.headersSent) {
+          res.status(502).send("No se pudo conectar al servidor de streaming de radio.");
+        }
+      });
+
+      // Close backend connection if client disconnects
+      req.on("close", () => {
+        proxyReq.destroy();
+      });
+    } catch (error: any) {
+      console.error("Error al procesar la URL de proxy:", error);
+      res.status(400).send("URL inválida: " + error.message);
+    }
+  });
 
   // API endpoint to save the streaming configuration to the local files
   app.post("/api/save-config", (req, res) => {

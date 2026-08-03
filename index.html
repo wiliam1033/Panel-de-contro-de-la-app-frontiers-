@@ -211,6 +211,17 @@
                                             </button>
                                         </div>
                                         <p class="text-xs text-gray-400 mt-2 ml-1">Esta URL se guardará directamente en un archivo JSON en tu repositorio para que la aplicación principal lo consulte directamente.</p>
+                                        
+                                        <div class="mt-4 p-4 bg-amber-50/60 rounded-xl border border-amber-100 text-xs text-amber-800 space-y-2">
+                                            <p class="font-bold flex items-center gap-1.5 text-amber-900">
+                                                💡 Consejos importantes para tu URL de Streaming:
+                                            </p>
+                                            <ul class="list-disc pl-4 space-y-1 text-amber-800/90">
+                                                <li><strong>Protocolo Seguro:</strong> La URL debe empezar con <code class="bg-amber-100/80 px-1 py-0.5 rounded text-amber-950 font-mono font-bold">https://</code>. Si usas <code class="bg-amber-100/80 px-1 py-0.5 rounded text-amber-950 font-mono">http://</code>, los navegadores modernos lo bloquearán por seguridad (contenido mixto).</li>
+                                                <li><strong>Enlace Directo de Audio:</strong> Debe ser un enlace de streaming directo (por ejemplo, terminado en <code class="bg-amber-100/80 px-1 py-0.5 rounded text-amber-950 font-mono">.mp3</code>, <code class="bg-amber-100/80 px-1 py-0.5 rounded text-amber-950 font-mono">.aac</code>, o puerto directo de Icecast/Shoutcast), no el sitio web general.</li>
+                                                <li><strong>Ejemplo para probar ya mismo:</strong> Copia y pega esta transmisión oficial para probar: <code class="bg-amber-100/80 select-all px-1.5 py-0.5 rounded text-indigo-700 font-mono font-bold break-all">https://icecast.radiofrance.fr/fip-midfi.mp3</code></li>
+                                            </ul>
+                                        </div>
                                     </div>
 
                                     <!-- Audio Player Container -->
@@ -250,42 +261,6 @@
                                             <span class="w-1.5 bg-indigo-500 rounded-full h-7 animate-[pulse_1.5s_infinite]"></span>
                                             <span class="w-1.5 bg-indigo-500 rounded-full h-5 animate-[pulse_1.1s_infinite]"></span>
                                             <span class="w-1.5 bg-indigo-500 rounded-full h-2 animate-[pulse_1.3s_infinite]"></span>
-                                        </div>
-                                    </div>
-
-                                    <!-- JSON API section -->
-                                    <div class="border-t border-gray-100 pt-6">
-                                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                            <div>
-                                                <h4 class="text-sm font-bold text-gray-700">Integración con tu App Principal</h4>
-                                                <p class="text-xs text-gray-500 mt-1">Puedes consumir el URL configurado directamente en formato JSON o sincronizarlo en tiempo real.</p>
-                                            </div>
-                                            <div class="flex gap-2">
-                                                <button id="btn-download-json" class="text-xs font-bold text-gray-600 hover:text-indigo-600 bg-white border border-gray-200 hover:border-indigo-100 rounded-xl px-4 py-2.5 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer">
-                                                    📥 Descargar JSON
-                                                </button>
-                                                <button id="btn-copy-sdk" class="text-xs font-bold text-gray-600 hover:text-indigo-600 bg-white border border-gray-200 hover:border-indigo-100 rounded-xl px-4 py-2.5 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer">
-                                                    📋 Código de Ejemplo
-                                                </button>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Code example / guide (hidden by default) -->
-                                        <div id="sdk-code-example" class="hidden mt-4 bg-gray-900 rounded-xl p-4 text-xs font-mono text-gray-300 overflow-x-auto border border-gray-800">
-                                            <div class="flex justify-between items-center text-gray-500 mb-2 border-b border-gray-800 pb-2">
-                                                <span>Consulta del Archivo JSON (Fetch API)</span>
-                                                <button id="btn-close-sdk" class="hover:text-white cursor-pointer">Cerrar</button>
-                                            </div>
-                                            <pre>// Tu app principal puede consultar este archivo JSON estático directamente
-fetch("https://tu-usuario.github.io/tu-repositorio/streaming_config.json")
-    .then(response => response.json())
-    .then(data => {
-        if (data.streamingUrl) {
-            console.log("Nueva URL de streaming encontrada:", data.streamingUrl);
-            // Carga la URL en el reproductor de radio de tu app
-        }
-    })
-    .catch(err => console.error("Error al cargar el JSON de configuración:", err));</pre>
                                         </div>
                                     </div>
                                 </div>
@@ -422,13 +397,39 @@ fetch("https://tu-usuario.github.io/tu-repositorio/streaming_config.json")
                 const currentStreamLoadedText = document.getElementById('current-stream-loaded-text');
                 const volumeSlider = document.getElementById('volume-slider');
                 const visualizerContainer = document.getElementById('visualizer-container');
-                const btnDownloadJson = document.getElementById('btn-download-json');
-                const btnCopySdk = document.getElementById('btn-copy-sdk');
-                const sdkCodeExample = document.getElementById('sdk-code-example');
-                const btnCloseSdk = document.getElementById('btn-close-sdk');
+
 
                 let audioPlayer = new Audio();
                 let isPlaying = false;
+
+                // Eventos del Reproductor de Audio para el manejo robusto de errores
+                audioPlayer.addEventListener('error', (e) => {
+                    console.error("Audio error detectado:", e);
+                    isPlaying = false;
+                    playIcon.classList.remove('hidden');
+                    pauseIcon.classList.add('hidden');
+                    playerStatusIndicator.className = 'w-2.5 h-2.5 bg-red-500 rounded-full';
+                    playerStatusText.textContent = 'Error de conexión';
+                    visualizerContainer.classList.add('hidden');
+                    
+                    const url = streamingUrlInput.value.trim();
+                    let errMsg = "No se pudo iniciar la transmisión. ";
+                    if (url.startsWith('http://') && window.location.protocol === 'https:') {
+                        errMsg += "Estás intentando cargar un stream 'http://' en un sitio 'https://'. Los navegadores modernos bloquean esto para evitar contenido mixto inseguro. Usa un stream 'https://' o copia el ejemplo de la caja de sugerencias.";
+                    } else {
+                        errMsg += "Asegúrate de que la URL sea un stream de audio directo, activo y sin restricciones de CORS.";
+                    }
+                    showAlert(errMsg, true);
+                });
+
+                audioPlayer.addEventListener('ended', () => {
+                    isPlaying = false;
+                    playIcon.classList.remove('hidden');
+                    pauseIcon.classList.add('hidden');
+                    playerStatusIndicator.className = 'w-2.5 h-2.5 bg-gray-400 rounded-full';
+                    playerStatusText.textContent = 'Detenido';
+                    visualizerContainer.classList.add('hidden');
+                });
 
                 // Lógica de Pestañas y Sidebar
                 navItems.forEach(item => {
@@ -725,8 +726,11 @@ fetch("https://tu-usuario.github.io/tu-repositorio/streaming_config.json")
                             playerStatusText.textContent = 'Conectando...';
                             currentStreamLoadedText.textContent = url;
 
+                            // Si la URL es insegura (http://), la pasamos por nuestro proxy para evitar el bloqueo de Contenido Mixto del navegador
+                            const finalUrl = url.startsWith('http://') ? `/api/proxy-stream?url=${encodeURIComponent(url)}` : url;
+
                             // Cambiar origen del reproductor de audio
-                            audioPlayer.src = url;
+                            audioPlayer.src = finalUrl;
                             audioPlayer.load();
 
                             const playPromise = audioPlayer.play();
@@ -743,7 +747,6 @@ fetch("https://tu-usuario.github.io/tu-repositorio/streaming_config.json")
                                     playerStatusIndicator.className = 'w-2.5 h-2.5 bg-red-500 rounded-full';
                                     playerStatusText.textContent = 'Error de conexión';
                                     visualizerContainer.classList.add('hidden');
-                                    showAlert("No se pudo iniciar la transmisión. Asegúrate de usar una URL válida y que el servidor tenga CORS habilitado.", true);
                                 });
                             }
                         } catch (e) {
@@ -762,32 +765,7 @@ fetch("https://tu-usuario.github.io/tu-repositorio/streaming_config.json")
                     }
                 });
 
-                // Descarga de JSON de configuración
-                btnDownloadJson.addEventListener('click', () => {
-                    const url = streamingUrlInput.value.trim() || "";
-                    const configObj = {
-                        streamingUrl: url,
-                        actualizado: new Date().toISOString(),
-                        formato: "audio/mpeg"
-                    };
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(configObj, null, 2));
-                    const downloadAnchor = document.createElement('a');
-                    downloadAnchor.setAttribute("href", dataStr);
-                    downloadAnchor.setAttribute("download", "streaming_config.json");
-                    document.body.appendChild(downloadAnchor);
-                    downloadAnchor.click();
-                    downloadAnchor.remove();
-                    showAlert("📦 Configuración JSON descargada con éxito.");
-                });
 
-                // Mostrar/Ocultar Código de ejemplo
-                btnCopySdk.addEventListener('click', () => {
-                    sdkCodeExample.classList.toggle('hidden');
-                });
-
-                btnCloseSdk.addEventListener('click', () => {
-                    sdkCodeExample.classList.add('hidden');
-                });
             } catch (error) {
                 console.error("Error crítico de inicialización:", error);
                 document.body.innerHTML = `<div style="padding:40px; text-align:center; font-family:sans-serif;">
