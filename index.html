@@ -675,7 +675,7 @@
                                     if (currentPlayingStreamUrl !== data.streamingUrl) {
                                         const wasPlaying = isPlaying;
                                         currentPlayingStreamUrl = data.streamingUrl;
-                                        const finalUrl = data.streamingUrl.startsWith('http://') ? `/api/proxy-stream?url=${encodeURIComponent(data.streamingUrl)}` : data.streamingUrl;
+                                        const finalUrl = `/api/proxy-stream?url=${encodeURIComponent(data.streamingUrl)}`;
                                         audioPlayer.src = finalUrl;
                                         
                                         if (wasPlaying) {
@@ -747,8 +747,8 @@
 
                             if (currentPlayingStreamUrl !== url) {
                                 currentPlayingStreamUrl = url;
-                                // Si la URL es insegura (http://), la pasamos por nuestro proxy para evitar el bloqueo de Contenido Mixto del navegador
-                                const finalUrl = url.startsWith('http://') ? `/api/proxy-stream?url=${encodeURIComponent(url)}` : url;
+                                // Siempre pasamos la URL por nuestro proxy para evitar cualquier problema de Contenido Mixto (HTTP en HTTPS) o CORS
+                                const finalUrl = `/api/proxy-stream?url=${encodeURIComponent(url)}`;
                                 // Cambiar origen del reproductor de audio
                                 audioPlayer.src = finalUrl;
                                 audioPlayer.load();
