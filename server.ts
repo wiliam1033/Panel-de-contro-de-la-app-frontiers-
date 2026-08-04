@@ -1,7 +1,10 @@
 import express from "express";
 import fs from "fs";
 import path from "path";
-import { http, https } from "follow-redirects";
+import http from "http";
+import https from "https";
+import followRedirects from "follow-redirects";
+const { http: httpRedirect, https: httpsRedirect } = followRedirects;
 import { createServer as createViteServer } from "vite";
 
 async function startServer() {
@@ -30,7 +33,7 @@ async function startServer() {
 
     try {
       const parsedUrl = new URL(streamUrl);
-      const client = parsedUrl.protocol === "https:" ? https : http;
+      const client = parsedUrl.protocol === "https:" ? httpsRedirect : httpRedirect;
 
       // Configure headers for audio streaming
       res.setHeader("Access-Control-Allow-Origin", "*");
