@@ -332,7 +332,7 @@
                 let firebaseConfig = {};
                 let firestoreDatabaseId = "(default)";
                 try {
-                    const response = await fetch('/firebase-applet-config.json');
+                    const response = await fetch('./firebase-applet-config.json');
                     if (!response.ok) {
                         throw new Error("HTTP error " + response.status);
                     }
@@ -675,7 +675,8 @@
                                     if (currentPlayingStreamUrl !== data.streamingUrl) {
                                         const wasPlaying = isPlaying;
                                         currentPlayingStreamUrl = data.streamingUrl;
-                                        const finalUrl = `/api/proxy-stream?url=${encodeURIComponent(data.streamingUrl)}`;
+                                        const isGitHubPages = window.location.hostname.includes('github.io');
+                                        const finalUrl = isGitHubPages ? data.streamingUrl : `/api/proxy-stream?url=${encodeURIComponent(data.streamingUrl)}`;
                                         audioPlayer.src = finalUrl;
                                         
                                         if (wasPlaying) {
@@ -747,8 +748,9 @@
 
                             if (currentPlayingStreamUrl !== url) {
                                 currentPlayingStreamUrl = url;
-                                // Siempre pasamos la URL por nuestro proxy para evitar cualquier problema de Contenido Mixto (HTTP en HTTPS) o CORS
-                                const finalUrl = `/api/proxy-stream?url=${encodeURIComponent(url)}`;
+                                // Siempre pasamos la URL por nuestro proxy para evitar cualquier problema de Contenido Mixto (HTTP en HTTPS) o CORS, excepto en GitHub Pages donde no hay backend
+                                const isGitHubPages = window.location.hostname.includes('github.io');
+                                const finalUrl = isGitHubPages ? url : `/api/proxy-stream?url=${encodeURIComponent(url)}`;
                                 // Cambiar origen del reproductor de audio
                                 audioPlayer.src = finalUrl;
                                 audioPlayer.load();
