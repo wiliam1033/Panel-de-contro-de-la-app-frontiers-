@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "Notificacion": {
+      "title": "Notificacion",
+      "description": "Una notificación del chat",
+      "type": "object",
+      "properties": {
+        "texto": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "usuario": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "fecha": {
+          "type": "string"
+        }
+      },
+      "required": ["texto", "usuario", "email", "fecha"]
+    },
+    "ConfiguracionRadio": {
+      "title": "ConfiguracionRadio",
+      "description": "Configuración del stream de radio",
+      "type": "object",
+      "properties": {
+        "streamingUrl": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "actualizadoPor": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "actualizado": {
+          "type": "string"
+        }
+      },
+      "required": ["streamingUrl", "actualizadoPor", "actualizado"]
+    }
+  },
+  "firestore": {
+    "notificaciones/{notificacionId}": {
+      "schema": {
+        "$ref": "Notificacion"
+      },
+      "description": "Mensajes y notificaciones del sistema"
+    },
+    "config/{configId}": {
+      "schema": {
+        "$ref": "ConfiguracionRadio"
+      },
+      "description": "Configuraciones globales como la radio"
+    }
+  }
+}

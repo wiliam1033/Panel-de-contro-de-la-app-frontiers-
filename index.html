@@ -329,15 +329,25 @@
                 ]);
 
                 // 1. DATOS Y CONFIGURACIÓN DE PROYECTO
-                const firebaseConfig = {
-                    apiKey: "AIzaSyC49Zd3E3bKiM3oByOmMsRWCvyrzgpfnrA",
-                    authDomain: "frontiers-notifications.firebaseapp.com",
-                    projectId: "frontiers-notifications",
-                    storageBucket: "frontiers-notifications.firebasestorage.app",
-                    messagingSenderId: "38960687904",
-                    appId: "1:38960687904:web:af1b4aed937cdd37f20545",
-                    measurementId: "G-TGSDZJZTWR"
-                };
+                let firebaseConfig = {};
+                let firestoreDatabaseId = "(default)";
+                try {
+                    const response = await fetch('/firebase-applet-config.json');
+                    const configData = await response.json();
+                    firebaseConfig = {
+                        apiKey: configData.apiKey,
+                        authDomain: configData.authDomain,
+                        projectId: configData.projectId,
+                        storageBucket: configData.storageBucket,
+                        messagingSenderId: configData.messagingSenderId,
+                        appId: configData.appId,
+                    };
+                    if (configData.firestoreDatabaseId) {
+                        firestoreDatabaseId = configData.firestoreDatabaseId;
+                    }
+                } catch (error) {
+                    console.error("Error cargando configuración de Firebase", error);
+                }
                 
                 const AI_STUDIO_KEY = "TU_API_KEY_DE_AI_STUDIO";
 
@@ -349,7 +359,7 @@
                 // Inicializar Firebase
                 const app = initializeApp(firebaseConfig);
                 const auth = getAuth(app);
-                const db = getFirestore(app);
+                const db = getFirestore(app, firestoreDatabaseId);
                 const provider = new GoogleAuthProvider();
 
                 // Restaurar botón

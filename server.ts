@@ -12,6 +12,16 @@ async function startServer() {
   // Middleware to parse JSON bodies
   app.use(express.json());
 
+  // Serve firebase-applet-config.json from the root
+  app.get("/firebase-applet-config.json", (req, res) => {
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      res.sendFile(configPath);
+    } else {
+      res.status(404).json({ error: "Firebase config not found" });
+    }
+  });
+
   // API endpoint to proxy HTTP streams safely over HTTPS
   app.get("/api/proxy-stream", (req, res) => {
     const streamUrl = req.query.url as string;

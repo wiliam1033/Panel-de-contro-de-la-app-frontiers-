@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidNotificacion(data) {
+      return data.keys().hasAll(['texto', 'usuario', 'email', 'fecha']) &&
+             data.keys().size() == 4 &&
+             data.texto is string && data.texto.size() > 0 && data.texto.size() <= 1000 &&
+             data.usuario is string && data.usuario.size() > 0 && data.usuario.size() <= 200 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
+             data.email == request.auth.token.email &&
+             data.fecha == request.time;
+    }
+
+    function isValidConfiguracionRadio(data) {
+      return data.keys().hasAll(['streamingUrl', 'actualizadoPor', 'actualizado']) &&
+             data.keys().size() == 3 &&
+             data.streamingUrl is string && data.streamingUrl.size() > 0 && data.streamingUrl.size() <= 2000 &&
+             data.actualizadoPor is string && data.actualizadoPor.size() > 0 && data.actualizadoPor.size() <= 200 &&
+             data.actualizado == request.time;
+    }
+
+    match /notificaciones/{notificacionId} {
+      allow read: if isSignedIn(); // Allowed for everyone signed in to see chat
+      allow create: if isSignedIn() && isValidId(notificacionId) && isValidNotificacion(incoming());
+      allow update, delete: if false; // Not allowed to edit messages for now
+    }
+
+    match /config/{configId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(configId) && isValidConfiguracionRadio(incoming());
+      allow update: if isSignedIn() && isValidConfiguracionRadio(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['streamingUrl', 'actualizadoPor', 'actualizado']);
+      allow delete: if false;
+    }
+  }
+}
