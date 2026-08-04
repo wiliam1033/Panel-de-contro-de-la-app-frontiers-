@@ -333,6 +333,9 @@
                 let firestoreDatabaseId = "(default)";
                 try {
                     const response = await fetch('/firebase-applet-config.json');
+                    if (!response.ok) {
+                        throw new Error("HTTP error " + response.status);
+                    }
                     const configData = await response.json();
                     firebaseConfig = {
                         apiKey: configData.apiKey,
@@ -346,7 +349,7 @@
                         firestoreDatabaseId = configData.firestoreDatabaseId;
                     }
                 } catch (error) {
-                    console.error("Error cargando configuración de Firebase", error);
+                    throw new Error("Error cargando /firebase-applet-config.json: " + error.message);
                 }
                 
                 const AI_STUDIO_KEY = "TU_API_KEY_DE_AI_STUDIO";
@@ -410,7 +413,9 @@
 
 
                 let audioPlayer = new Audio();
+                audioPlayer.preload = "none";
                 let isPlaying = false;
+                let currentPlayingStreamUrl = "";
 
                 // Eventos del Reproductor de Audio para el manejo robusto de errores
                 audioPlayer.addEventListener('error', (e) => {
@@ -423,12 +428,8 @@
                     visualizerContainer.classList.add('hidden');
                     
                     const url = streamingUrlInput.value.trim();
-                    let errMsg = "No se pudo iniciar la transmisión. ";
-                    if (url.startsWith('http://') && window.location.protocol === 'https:') {
-                        errMsg += "Estás intentando cargar un stream 'http://' en un sitio 'https://'. Los navegadores modernos bloquean esto para evitar contenido mixto inseguro. Usa un stream 'https://' o copia el ejemplo de la caja de sugerencias.";
-                    } else {
-                        errMsg += "Asegúrate de que la URL sea un stream de audio directo, activo y sin restricciones de CORS.";
-                    }
+                    let errMsg = "No se pudo conectar a la transmisión de radio. ";
+                    errMsg += "Asegúrate de que la URL sea un stream de audio directo, activo y sin restricciones de CORS.";
                     showAlert(errMsg, true);
                 });
 
@@ -671,14 +672,15 @@
                                     currentStreamLoadedText.textContent = data.streamingUrl;
                                     
                                     // Update audio player source if it's currently playing a different stream
-                                    if (isPlaying && audioPlayer.src !== data.streamingUrl) {
+                                    if (currentPlayingStreamUrl !== data.streamingUrl) {
                                         const wasPlaying = isPlaying;
-                                        audioPlayer.src = data.streamingUrl;
+                                        currentPlayingStreamUrl = data.streamingUrl;
+                                        const finalUrl = data.streamingUrl.startsWith('http://') ? `/api/proxy-stream?url=${encodeURIComponent(data.streamingUrl)}` : data.streamingUrl;
+                                        audioPlayer.src = finalUrl;
+                                        
                                         if (wasPlaying) {
                                             audioPlayer.play().catch(e => console.error("Auto-play prevented", e));
                                         }
-                                    } else if (!isPlaying && audioPlayer.src !== data.streamingUrl) {
-                                        audioPlayer.src = data.streamingUrl;
                                     }
                                 }
                             }
@@ -689,6 +691,10 @@
                 }
 
                 btnSaveStreaming.addEventListener('click', async () => {
+                    if (!currentUser) {
+                        showAlert("Debes iniciar sesión para cambiar la radio.", true);
+                        return;
+                    }
                     const url = streamingUrlInput.value.trim();
                     if (!url) {
                         showAlert("El URL del streaming no puede estar vacío.", true);
@@ -702,7 +708,7 @@
                         const docRef = doc(db, 'config', 'radio');
                         await setDoc(docRef, {
                             streamingUrl: url,
-                            actualizadoPor: currentUser ? (currentUser.displayName || currentUser.email) : 'Administrador',
+                            actualizadoPor: currentUser.displayName || currentUser.email,
                             actualizado: serverTimestamp()
                         }, { merge: true });
 
@@ -739,12 +745,14 @@
                             playerStatusText.textContent = 'Conectando...';
                             currentStreamLoadedText.textContent = url;
 
-                            // Si la URL es insegura (http://), la pasamos por nuestro proxy para evitar el bloqueo de Contenido Mixto del navegador
-                            const finalUrl = url.startsWith('http://') ? `/api/proxy-stream?url=${encodeURIComponent(url)}` : url;
-
-                            // Cambiar origen del reproductor de audio
-                            audioPlayer.src = finalUrl;
-                            audioPlayer.load();
+                            if (currentPlayingStreamUrl !== url) {
+                                currentPlayingStreamUrl = url;
+                                // Si la URL es insegura (http://), la pasamos por nuestro proxy para evitar el bloqueo de Contenido Mixto del navegador
+                                const finalUrl = url.startsWith('http://') ? `/api/proxy-stream?url=${encodeURIComponent(url)}` : url;
+                                // Cambiar origen del reproductor de audio
+                                audioPlayer.src = finalUrl;
+                                audioPlayer.load();
+                            }
 
                             const playPromise = audioPlayer.play();
                             if (playPromise !== undefined) {
