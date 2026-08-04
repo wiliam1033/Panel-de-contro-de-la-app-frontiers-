@@ -56,10 +56,18 @@ async function startServer() {
 
   // API endpoint to save the streaming configuration to the local files
   app.post("/api/save-config", (req, res) => {
-    const { streamingUrl, actualizadoPor } = req.body;
+    let { streamingUrl, isBase64, actualizadoPor } = req.body;
 
     if (streamingUrl === undefined) {
       return res.status(400).json({ error: "El campo streamingUrl es requerido." });
+    }
+
+    if (isBase64) {
+      try {
+        streamingUrl = Buffer.from(streamingUrl, 'base64').toString('utf8');
+      } catch (e) {
+        return res.status(400).json({ error: "URL encoding inválido." });
+      }
     }
 
     const configData = {

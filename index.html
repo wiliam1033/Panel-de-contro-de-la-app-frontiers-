@@ -654,10 +654,13 @@
                     try {
                         const response = await fetch("/streaming_config.json");
                         if (response.ok) {
-                            const data = await response.json();
-                            if (data.streamingUrl) {
-                                streamingUrlInput.value = data.streamingUrl;
-                                currentStreamLoadedText.textContent = data.streamingUrl;
+                            const contentType = response.headers.get("content-type");
+                            if (contentType && contentType.includes("application/json")) {
+                                const data = await response.json();
+                                if (data.streamingUrl) {
+                                    streamingUrlInput.value = data.streamingUrl;
+                                    currentStreamLoadedText.textContent = data.streamingUrl;
+                                }
                             }
                         }
                     } catch (error) {
@@ -682,17 +685,36 @@
                                 "Content-Type": "application/json"
                             },
                             body: JSON.stringify({
-                                streamingUrl: url,
+                                streamingUrl: btoa(url),
+                                isBase64: true,
                                 actualizadoPor: currentUser ? (currentUser.displayName || currentUser.email) : 'Administrador'
                             })
                         });
 
                         if (!response.ok) {
-                            const errData = await response.json();
-                            throw new Error(errData.error || "Error de red en el servidor");
+                            let errorMessage = "Error de red en el servidor (" + response.status + ")";
+                            const contentType = response.headers.get("content-type");
+                            if (contentType && contentType.includes("application/json")) {
+                                try {
+                                    const errData = await response.json();
+                                    errorMessage = errData.error || errorMessage;
+                                } catch (e) {
+                                    // ignore JSON parse error
+                                }
+                            } else {
+                                // Probably hit a static host (like GitHub Pages) that returned an HTML 404 page
+                                errorMessage = "El servidor no responde correctamente. Si estás en GitHub Pages, recuerda que los endpoints '/api' no funcionan allí.";
+                            }
+                            throw new Error(errorMessage);
                         }
 
-                        const resData = await response.json();
+                        let resData = null;
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.includes("application/json")) {
+                            resData = await response.json();
+                        } else {
+                            throw new Error("Respuesta inesperada del servidor (no es JSON). ¿Estás en un hosting estático?");
+                        }
                         currentStreamLoadedText.textContent = url;
                         showAlert("📻 ¡Streaming de Radio guardado en el repositorio con éxito!");
                     } catch (error) {
