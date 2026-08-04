@@ -650,21 +650,31 @@
                 }
 
                 // --- LOGICA DE CONFIGURACION Y REPRODUCTOR DE STREAMING ---
-                async function cargarConfiguracionRadio() {
+                function cargarConfiguracionRadio() {
                     try {
-                        const response = await fetch("/streaming_config.json");
-                        if (response.ok) {
-                            const contentType = response.headers.get("content-type");
-                            if (contentType && contentType.includes("application/json")) {
-                                const data = await response.json();
+                        const docRef = doc(db, 'config', 'radio');
+                        onSnapshot(docRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const data = docSnap.data();
                                 if (data.streamingUrl) {
                                     streamingUrlInput.value = data.streamingUrl;
                                     currentStreamLoadedText.textContent = data.streamingUrl;
+                                    
+                                    // Update audio player source if it's currently playing a different stream
+                                    if (isPlaying && audioPlayer.src !== data.streamingUrl) {
+                                        const wasPlaying = isPlaying;
+                                        audioPlayer.src = data.streamingUrl;
+                                        if (wasPlaying) {
+                                            audioPlayer.play().catch(e => console.error("Auto-play prevented", e));
+                                        }
+                                    } else if (!isPlaying && audioPlayer.src !== data.streamingUrl) {
+                                        audioPlayer.src = data.streamingUrl;
+                                    }
                                 }
                             }
-                        }
+                        });
                     } catch (error) {
-                        console.error("Error al cargar la configuración de streaming local:", error);
+                        console.error("Error al suscribirse a la configuración de streaming:", error);
                     }
                 }
 
@@ -679,44 +689,15 @@
                         btnSaveStreaming.disabled = true;
                         btnSaveStreaming.innerHTML = '⌛ Aplicando...';
 
-                        const response = await fetch("/api/save-config", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({
-                                streamingUrl: btoa(url),
-                                isBase64: true,
-                                actualizadoPor: currentUser ? (currentUser.displayName || currentUser.email) : 'Administrador'
-                            })
-                        });
+                        const docRef = doc(db, 'config', 'radio');
+                        await setDoc(docRef, {
+                            streamingUrl: url,
+                            actualizadoPor: currentUser ? (currentUser.displayName || currentUser.email) : 'Administrador',
+                            actualizado: serverTimestamp()
+                        }, { merge: true });
 
-                        if (!response.ok) {
-                            let errorMessage = "Error de red en el servidor (" + response.status + ")";
-                            const contentType = response.headers.get("content-type");
-                            if (contentType && contentType.includes("application/json")) {
-                                try {
-                                    const errData = await response.json();
-                                    errorMessage = errData.error || errorMessage;
-                                } catch (e) {
-                                    // ignore JSON parse error
-                                }
-                            } else {
-                                // Probably hit a static host (like GitHub Pages) that returned an HTML 404 page
-                                errorMessage = "El servidor no responde correctamente. Si estás en GitHub Pages, recuerda que los endpoints '/api' no funcionan allí.";
-                            }
-                            throw new Error(errorMessage);
-                        }
-
-                        let resData = null;
-                        const contentType = response.headers.get("content-type");
-                        if (contentType && contentType.includes("application/json")) {
-                            resData = await response.json();
-                        } else {
-                            throw new Error("Respuesta inesperada del servidor (no es JSON). ¿Estás en un hosting estático?");
-                        }
                         currentStreamLoadedText.textContent = url;
-                        showAlert("📻 ¡Streaming de Radio guardado en el repositorio con éxito!");
+                        showAlert("📻 ¡Streaming de Radio guardado con éxito!");
                     } catch (error) {
                         console.error("Error al guardar la configuración:", error);
                         showAlert("Error al aplicar cambios: " + error.message, true);
