@@ -78,6 +78,10 @@
                         <span class="text-lg">📻</span>
                         <span class="font-medium">Streaming de Radio</span>
                     </a>
+                    <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 text-gray-400 rounded-lg transition-colors cursor-pointer" data-target="tab-redes">
+                        <span class="text-lg">🌐</span>
+                        <span class="font-medium">Redes Sociales</span>
+                    </a>
                 </nav>
             </div>
             <div class="mt-auto p-6 border-t border-white/5 bg-[#0a0f1c]">
@@ -268,6 +272,71 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Pestaña: Redes Sociales -->
+                <div id="tab-redes" class="tab-content h-full">
+                    <div class="grid grid-cols-1 gap-8 h-full max-w-6xl mx-auto">
+                        <div class="flex flex-col max-w-4xl mx-auto w-full gap-6">
+                            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex-shrink-0">
+                                <div class="p-5 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                    <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                                        <span class="text-xl">🌐</span> Enlaces de Redes Sociales y Web
+                                    </h3>
+                                    <span class="text-[10px] uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full font-bold">Enlaces Activos</span>
+                                </div>
+                                <div class="p-5 md:p-6 space-y-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">TikTok</label>
+                                            <div class="relative">
+                                                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">🎵</span>
+                                                <input type="url" id="redes-tiktok" class="w-full pl-10 pr-4 py-3.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder-gray-400" placeholder="https://tiktok.com/@tu_canal">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Facebook</label>
+                                            <div class="relative">
+                                                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">📘</span>
+                                                <input type="url" id="redes-facebook" class="w-full pl-10 pr-4 py-3.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder-gray-400" placeholder="https://facebook.com/tu_pagina">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">YouTube</label>
+                                            <div class="relative">
+                                                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">📺</span>
+                                                <input type="url" id="redes-youtube" class="w-full pl-10 pr-4 py-3.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder-gray-400" placeholder="https://youtube.com/@tu_canal">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Instagram</label>
+                                            <div class="relative">
+                                                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">📸</span>
+                                                <input type="url" id="redes-instagram" class="w-full pl-10 pr-4 py-3.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder-gray-400" placeholder="https://instagram.com/tu_perfil">
+                                            </div>
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Página Web</label>
+                                            <div class="relative">
+                                                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">💻</span>
+                                                <input type="url" id="redes-web" class="w-full pl-10 pr-4 py-3.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all placeholder-gray-400" placeholder="https://www.tu_sitio_web.com">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-4 border-t border-gray-100">
+                                        <div class="text-xs text-gray-400">
+                                            <span>Última actualización: </span>
+                                            <span id="redes-updated-text" class="font-medium text-gray-500">Nunca</span>
+                                        </div>
+                                        <button id="btn-save-redes" class="px-6 py-3 bg-[#0f172a] hover:bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md transition-all flex justify-center items-center gap-2 cursor-pointer">
+                                            💾 Guardar Redes
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -411,6 +480,15 @@
                 const volumeSlider = document.getElementById('volume-slider');
                 const visualizerContainer = document.getElementById('visualizer-container');
 
+                // Variables de Redes Sociales
+                const redesTiktok = document.getElementById('redes-tiktok');
+                const redesFacebook = document.getElementById('redes-facebook');
+                const redesYoutube = document.getElementById('redes-youtube');
+                const redesInstagram = document.getElementById('redes-instagram');
+                const redesWeb = document.getElementById('redes-web');
+                const redesUpdatedText = document.getElementById('redes-updated-text');
+                const btnSaveRedes = document.getElementById('btn-save-redes');
+
 
                 let audioPlayer = new Audio();
                 audioPlayer.preload = "none";
@@ -479,6 +557,7 @@
                         }
                         iniciarEscuchaHistorial();
                         cargarConfiguracionRadio();
+                        cargarConfiguracionRedes();
                     } else {
                         currentUser = null;
                         loginScreen.classList.remove('hidden');
@@ -723,6 +802,64 @@
                         btnSaveStreaming.innerHTML = '💾 Aplicar Cambios';
                     }
                 });
+
+                // --- LOGICA DE REDES SOCIALES ---
+                function cargarConfiguracionRedes() {
+                    try {
+                        const docRef = doc(db, 'config', 'redes');
+                        onSnapshot(docRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const data = docSnap.data();
+                                if (redesTiktok) redesTiktok.value = data.tiktok || '';
+                                if (redesFacebook) redesFacebook.value = data.facebook || '';
+                                if (redesYoutube) redesYoutube.value = data.youtube || '';
+                                if (redesInstagram) redesInstagram.value = data.instagram || '';
+                                if (redesWeb) redesWeb.value = data.web || '';
+                                
+                                if (redesUpdatedText) {
+                                    const fechaObj = data.actualizado ? data.actualizado.toDate() : new Date();
+                                    const fechaStr = fechaObj.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+                                    redesUpdatedText.textContent = `${fechaStr} por ${data.actualizadoPor || 'Desconocido'}`;
+                                }
+                            }
+                        });
+                    } catch (error) {
+                        console.error("Error al cargar la configuración de redes:", error);
+                    }
+                }
+
+                if (btnSaveRedes) {
+                    btnSaveRedes.addEventListener('click', async () => {
+                        if (!currentUser) {
+                            showAlert("Debes iniciar sesión para cambiar las redes sociales.", true);
+                            return;
+                        }
+                        
+                        try {
+                            btnSaveRedes.disabled = true;
+                            btnSaveRedes.innerHTML = '⌛ Guardando...';
+
+                            const docRef = doc(db, 'config', 'redes');
+                            await setDoc(docRef, {
+                                tiktok: redesTiktok.value.trim() || null,
+                                facebook: redesFacebook.value.trim() || null,
+                                youtube: redesYoutube.value.trim() || null,
+                                instagram: redesInstagram.value.trim() || null,
+                                web: redesWeb.value.trim() || null,
+                                actualizadoPor: currentUser.displayName || currentUser.email,
+                                actualizado: serverTimestamp()
+                            }, { merge: true });
+
+                            showAlert("🌐 ¡Enlaces de redes sociales guardados con éxito!");
+                        } catch (error) {
+                            console.error("Error al guardar redes sociales:", error);
+                            showAlert("Error al guardar enlaces: " + error.message, true);
+                        } finally {
+                            btnSaveRedes.disabled = false;
+                            btnSaveRedes.innerHTML = '💾 Guardar Redes';
+                        }
+                    });
+                }
 
                 // Reproductor de Audio
                 btnPlayRadio.addEventListener('click', () => {

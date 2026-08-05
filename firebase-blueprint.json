@@ -5,23 +5,23 @@
       "description": "Una notificación del chat",
       "type": "object",
       "properties": {
-        "texto": {
+        "mensaje": {
           "type": "string",
           "maxLength": 1000
         },
-        "usuario": {
+        "enviadoPor": {
           "type": "string",
           "maxLength": 200
         },
-        "email": {
+        "link": {
           "type": "string",
-          "maxLength": 200
+          "maxLength": 2000
         },
         "fecha": {
           "type": "string"
         }
       },
-      "required": ["texto", "usuario", "email", "fecha"]
+      "required": ["mensaje", "enviadoPor", "fecha"]
     },
     "ConfiguracionRadio": {
       "title": "ConfiguracionRadio",
@@ -41,6 +41,41 @@
         }
       },
       "required": ["streamingUrl", "actualizadoPor", "actualizado"]
+    },
+    "ConfiguracionRedes": {
+      "title": "ConfiguracionRedes",
+      "description": "Configuración de enlaces a redes sociales y web",
+      "type": "object",
+      "properties": {
+        "tiktok": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "facebook": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "youtube": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "instagram": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "web": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "actualizadoPor": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "actualizado": {
+          "type": "string"
+        }
+      },
+      "required": ["actualizadoPor", "actualizado"]
     }
   },
   "firestore": {
@@ -52,9 +87,12 @@
     },
     "config/{configId}": {
       "schema": {
-        "$ref": "ConfiguracionRadio"
+        "anyOf": [
+          { "$ref": "ConfiguracionRadio" },
+          { "$ref": "ConfiguracionRedes" }
+        ]
       },
-      "description": "Configuraciones globales como la radio"
+      "description": "Configuraciones globales como la radio y redes sociales"
     }
   }
 }

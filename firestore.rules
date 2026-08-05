@@ -18,16 +18,15 @@ service cloud.firestore {
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() <= 128;
     }
 
     function isValidNotificacion(data) {
-      return data.keys().hasAll(['texto', 'usuario', 'email', 'fecha']) &&
-             data.keys().size() == 4 &&
-             data.texto is string && data.texto.size() > 0 && data.texto.size() <= 1000 &&
-             data.usuario is string && data.usuario.size() > 0 && data.usuario.size() <= 200 &&
-             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
-             data.email == request.auth.token.email &&
+      return data.keys().hasAll(['mensaje', 'enviadoPor', 'fecha']) &&
+             data.keys().size() <= 4 &&
+             data.mensaje is string && data.mensaje.size() > 0 && data.mensaje.size() <= 1000 &&
+             data.enviadoPor is string && data.enviadoPor.size() > 0 && data.enviadoPor.size() <= 200 &&
+             (!('link' in data) || data.link == null || (data.link is string && data.link.size() <= 2000)) &&
              data.fecha == request.time;
     }
 
@@ -35,6 +34,18 @@ service cloud.firestore {
       return data.keys().hasAll(['streamingUrl', 'actualizadoPor', 'actualizado']) &&
              data.keys().size() == 3 &&
              data.streamingUrl is string && data.streamingUrl.size() > 0 && data.streamingUrl.size() <= 2000 &&
+             data.actualizadoPor is string && data.actualizadoPor.size() > 0 && data.actualizadoPor.size() <= 200 &&
+             data.actualizado == request.time;
+    }
+
+    function isValidConfiguracionRedes(data) {
+      return data.keys().hasAll(['actualizadoPor', 'actualizado']) &&
+             data.keys().size() <= 7 &&
+             (!('tiktok' in data) || data.tiktok == null || (data.tiktok is string && data.tiktok.size() <= 2000)) &&
+             (!('facebook' in data) || data.facebook == null || (data.facebook is string && data.facebook.size() <= 2000)) &&
+             (!('youtube' in data) || data.youtube == null || (data.youtube is string && data.youtube.size() <= 2000)) &&
+             (!('instagram' in data) || data.instagram == null || (data.instagram is string && data.instagram.size() <= 2000)) &&
+             (!('web' in data) || data.web == null || (data.web is string && data.web.size() <= 2000)) &&
              data.actualizadoPor is string && data.actualizadoPor.size() > 0 && data.actualizadoPor.size() <= 200 &&
              data.actualizado == request.time;
     }
@@ -47,8 +58,12 @@ service cloud.firestore {
 
     match /config/{configId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(configId) && isValidConfiguracionRadio(incoming());
-      allow update: if isSignedIn() && isValidConfiguracionRadio(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['streamingUrl', 'actualizadoPor', 'actualizado']);
+      allow create: if isSignedIn() && isValidId(configId) && 
+                    (configId == 'radio' ? isValidConfiguracionRadio(incoming()) : 
+                     configId == 'redes' ? isValidConfiguracionRedes(incoming()) : false);
+      allow update: if isSignedIn() && 
+                    (configId == 'radio' ? (isValidConfiguracionRadio(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['streamingUrl', 'actualizadoPor', 'actualizado'])) : 
+                     configId == 'redes' ? (isValidConfiguracionRedes(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['tiktok', 'facebook', 'youtube', 'instagram', 'web', 'actualizadoPor', 'actualizado'])) : false);
       allow delete: if false;
     }
   }
